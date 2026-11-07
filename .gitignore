@@ -1,0 +1,9 @@
+﻿node_modules/
+.work/
+vendor/ffmpeg/
+*.mp4
+*.mp3
+*.log
+family-timeline*.json
+media-analysis.json
+media-order.json

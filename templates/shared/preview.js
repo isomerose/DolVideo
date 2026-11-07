@@ -1,0 +1,11 @@
+﻿if(location.search.includes('preview')){
+ const bar=document.createElement('div');bar.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#222e;color:white;padding:8px;display:flex;gap:8px';bar.innerHTML='<button>재생</button><input type="range" min="0" step="0.01" value="0" style="flex:1"><span>0.00</span>';document.body.append(bar);
+ const [button,range,label]=bar.children;let playing=false,last=0,t=0,busy=false,pending=null,audio=null,clips=[];
+ button.disabled=true;fetch('/data').then(r=>r.json()).then(async d=>{clips=(d.audioClips||[]).map(c=>({...c,media:new Audio(c.url)}));if(d.hasBgm){const response=await fetch('/bgm');if(!response.ok)throw Error('BGM could not be loaded');audio=new Audio(URL.createObjectURL(await response.blob()));audio.loop=true;audio.preload='auto';audio.volume=clips.length?.65:1}button.disabled=false}).catch(()=>{button.textContent='음악 로딩 실패';});
+ function sync(force=false){if(audio){if(Number.isFinite(audio.duration)){const at=t%audio.duration;if((force||Math.abs(audio.currentTime-at)>1)&&(!audio.seeking||force))audio.currentTime=at}if(playing&&audio.paused)audio.play().catch(()=>{});if(!playing&&!audio.paused)audio.pause()}
+  for(const c of clips){const active=playing&&t>=c.start&&t<c.start+c.duration;if(active){const at=c.offset+t-c.start;if((force||Math.abs(c.media.currentTime-at)>.5)&&(!c.media.seeking||force))c.media.currentTime=at;if(c.media.paused)c.media.play().catch(()=>{})}else if(!c.media.paused)c.media.pause()}}
+ async function show(value){pending=value;if(busy||!window.video)return;busy=true;try{while(pending!==null){const next=pending;pending=null;await window.video.renderAt(next)}}finally{busy=false}}
+ button.onclick=()=>{if(!window.video)return;if(t>=window.video.durationSeconds)t=0;playing=!playing;button.textContent=playing?'정지':'재생';last=performance.now();sync(true)};
+ range.oninput=()=>{t=+range.value;show(t);label.textContent=t.toFixed(2);sync(true)};
+ function tick(now){if(window.video){range.max=window.video.durationSeconds;if(playing){t=Math.min(window.video.durationSeconds,t+(now-last)/1000);show(t);range.value=t;label.textContent=t.toFixed(2);if(t>=window.video.durationSeconds){playing=false;button.textContent='재생'}sync()}}last=now;requestAnimationFrame(tick)}requestAnimationFrame(tick)
+}
